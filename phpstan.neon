@@ -2,6 +2,11 @@ includes:
     - vendor/phpstan/phpstan/conf/bleedingEdge.neon
 
 parameters:
-    level: 9
+    level: max
     paths:
         - src
+    ignoreErrors:
+        # Match tipee config
+        - '#^Property (.*) is never read, only written.$#'
+        - '#^Method (.*) has parameter (.*) with no value type specified in iterable type array.$#'
+        - '#^PHPDoc tag @var with type (.*) is not subtype of native type (.*)$#'

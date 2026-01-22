@@ -5,41 +5,55 @@ declare(strict_types=1);
 namespace App;
 
 /**
- * Example 1: Template types not resolved from generic class instantiation
+ * Example 1: Closure parameter type inference with nested foreach destructuring
  *
- * Expected: No errors (K should be resolved to int from Cache<int, string>)
- * Regression: Generator key is mixed instead of int
- *
- * @see https://phpstan.org/r/98e8f7fb-78e2-463a-859e-5ac77cea55d5
+ * The closure's second parameter should be inferred as
+ * non-empty-array<array{LocalDateInterval, array<int>}> from the expected type,
+ * but it's inferred as just "array", causing destructuring to produce "mixed".
  */
+
+class Context {}
+
+class LocalDate {}
+
+/** @implements \IteratorAggregate<int, LocalDate> */
+class LocalDateInterval implements \IteratorAggregate
+{
+    /** @return \Traversable<int, LocalDate> */
+    public function getIterator(): \Traversable
+    {
+        yield 0 => new LocalDate();
+    }
+}
 
 /**
  * @template K of array-key
  * @template T
  */
-class Cache
+final class Cache
 {
     /**
-     * @param \Closure(array<K>): iterable<K, T> $loader
-     * @phpstan-ignore constructor.unusedParameter
+     * @param \Closure(Context, non-empty-array<array{LocalDateInterval, array<K>}>): iterable<array{K, LocalDate}, T> $loader
      */
     public function __construct(\Closure $loader)
     {
     }
 }
 
-class Example1
+/**
+ * @return Cache<int, list<string>>
+ */
+function createCache(): Cache
 {
-    /** @return Cache<int, string> */
-    public function createCache(): Cache
-    {
-        return new Cache(
-            function (array $ids): iterable {
-                // $ids should be array<int>, $id should be int
-                foreach ($ids as $id) {
-                    yield $id => 'value';
+    return new Cache(
+        function (Context $context, array $cacheMisses): iterable {
+            foreach ($cacheMisses as [$dateRange, $resourceIds]) {
+                foreach ($dateRange as $date) {
+                    foreach ($resourceIds as $resourceId) {
+                        yield [$resourceId, $date] => [];
+                    }
                 }
             }
-        );
-    }
+        }
+    );
 }
